@@ -11,13 +11,15 @@ import sys
 from Crypto.Cipher import AES
 from queue import Queue
 from threading import Thread
+
+from pymongo import MongoClient
 from requests import HTTPError
 
 modulus = '00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'
 nonce = '0CoJUm6Qyw8W8jud'
 pubKey = '010001'
 
-playid_url = 'http://music.163.com/api/song/detail/?ids=%s'
+song_url = 'http://music.163.com/api/song/detail/?ids=%s'
 comment_url = 'http://music.163.com/weapi/v1/resource/comments/'
 
 headers = {
@@ -25,20 +27,14 @@ headers = {
     'Referer': 'http://music.163.com/'
 }
 text = {
-    'username': '账号',
-    'password': '密码',
+    'username': os.environ['USERNAME'],
+    'password': os.environ['PASSWORD'],
     'rememberLogin': 'true'
 }
 
-
-def get_db_conn():
-    return pymysql.connect(host='localhost',
-                           port=3306,
-                           user='root',
-                           password='密码',
-                           charset='utf8',
-                           db='test',
-                           cursorclass=pymysql.cursors.DictCursor)
+client = MongoClient()
+db = client['163music']
+song_id = 60000
 
 
 def aesEncrypt(text, secKey):
@@ -74,28 +70,17 @@ def login():
 
 def get_music_comments(ids):
     """获取评论"""
-    try:
-        url = comment_url + str(ids)
-        req_json = requests.post(url, headers=headers, data=data).json()
-        if req_json['code'] == 200:
-            if 'total' in req_json:
-                return req_json['total']
-    except IOError as e:
-        print(e)
-        return
-    except HTTPError as e:
-        g = Thread(name='消费', target=get_comment, args=(queue,))
-        g.start()
-        print('打开一个新线程', e)
-        return
+    time.sleep(500)
+    url = comment_url + str(ids)
+    req_json = requests.post(url, headers=headers, data=data).json()
+    return req_json
 
 
 def get_song_by_playid(queue):
-    global playid_id, times
-    req_json = requests.get(playid_url % str([ids for ids in range(playid_id, playid_id + 50)])).json()
+    global song_id, times
+    req_json = requests.get(song_url % str([ids for ids in range(song_id, song_id + 50)])).json()
     if req_json['code'] == 200:
         for song in req_json['songs']:
-            times += 1
             if song['commentThreadId'] is not None:
                 queue.put(
                     {
@@ -105,10 +90,7 @@ def get_song_by_playid(queue):
                         'mp3Url': song['mp3Url'],
                         'mv': song['mvid']
                     })
-            print('%s' % times, end='\r')
-    playid_id += 50
-    with open('play_id.info', 'wt') as info:
-        info.write(str(playid_id))
+    song_id += 50
 
 
 def create_music(q):
@@ -117,36 +99,24 @@ def create_music(q):
 
 
 def insert(insert_data):
-    connection = get_db_conn()
-    try:
-        with connection.cursor() as cursor:
-            sql = "INSERT INTO `163music` (`id`, `name`,`mv`,`mp3_url`,`comments`) VALUES (%s,%s,%s,%s,%s)"
-            cursor.execute(sql, insert_data)
-        connection.commit()
-    except pymysql.err.IntegrityError as e:
-        print(data, e)
-    finally:
-        connection.close()
+    print(insert_data)
+    songs = db.songs
+    songs.update({'_id': insert_data['id']}, insert_data, True)
 
 
 def get_comment(q, ):
     while True:
-        global submit_list
         music_dict = q.get()
         ids_comments = get_music_comments(music_dict['comment_url'])
         if ids_comments is None:
-            q.put(music_dict)
-            time.sleep(60)
             return
-        insert_data = (music_dict['id'], music_dict['name'], music_dict['mv'], music_dict['mp3Url'], ids_comments)
-        insert(insert_data)
+        music_dict['comments'] = ids_comments['hotComments']
+        music_dict['comment_total'] = ids_comments['total']
+        insert(music_dict)
 
 
 if __name__ == '__main__':
     print('模块', sys.argv[0])
-    with open('play_id.info', 'rt') as info:
-        playid_id = int(info.read())
-    times = 0
     queue = Queue(maxsize=50)
     login()
     c = Thread(name='歌曲信息', target=create_music, args=(queue,))
