@@ -32,7 +32,7 @@ text = {
     'rememberLogin': 'true'
 }
 
-client = MongoClient()
+client = MongoClient(os.environ['MONGODB'])
 db = client['163music']
 
 
