@@ -93,6 +93,7 @@ def get_comment(q, ):
         music_dict['_id'] = music_dict['id']
         songs = db.songs
         songs.save(music_dict)
+        print('save %s' % music_dict)
 
 
 if __name__ == '__main__':
