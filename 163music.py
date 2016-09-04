@@ -32,9 +32,6 @@ text = {
     'rememberLogin': 'true'
 }
 
-client = MongoClient(os.environ['MONGODB'])
-db = client['163music']
-
 
 def aesEncrypt(text, secKey):
     pad = 16 - len(text) % 16
@@ -93,18 +90,31 @@ def get_comment(q, ):
         music_dict['_id'] = music_dict['id']
         songs = db.songs
         songs.save(music_dict)
-        print('save %s' % music_dict)
 
 
 if __name__ == '__main__':
-    print('模块', sys.argv[0])
-    queue = Queue(maxsize=100)
-    if db.playlist.find({'_id': 'playlist'}) is None:
+    print('{:=^64}'.format('模块%s' % sys.argv[0]))
+    print('{:=^64}'.format('初始化'))
+    print('USERNAME: %s' % os.environ['USERNAME'])
+    print('PASSWORD: %s' % os.environ['PASSWORD'])
+    print('MONGODB: %s' % os.environ['MONGODB'])
+
+    print('{:=^64}'.format('Connect to MongoDB'))
+    client = MongoClient(os.environ['MONGODB'])
+    db = client['163music']
+    playlist_id = db.playlist.find_one({'_id': 'playlist'})
+    print('{:=^64}'.format('歌单进度%s' % playlist_id))
+    if playlist_id is None:
         db.playlist.insert({'_id': 'playlist', 'playlist': 100001})
+    print('{:=^64}'.format('Connected MongoDB'))
+
+    queue = Queue(maxsize=100)
     login()
     c = Thread(name='歌曲信息', target=create_music, args=(queue,))
     c.start()
-    for i in range(multiprocessing.cpu_count()):
+    print('{:=^64}'.format('爬取启动'))
+    for i in range(1 + multiprocessing.cpu_count()):
         g = Thread(name='评论 %s' % i, target=get_comment, args=(queue,))
         g.start()
+        print('{:=^64}'.format('抓取 %s 启动' % i))
     c.join()
