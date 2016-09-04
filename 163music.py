@@ -100,7 +100,7 @@ if __name__ == '__main__':
     print('MONGODB: %s' % os.environ['MONGODB_CONNECTION'])
 
     print('{:=^64}'.format('Connect to MongoDB'))
-    client = MongoClient('mongodb://%s'% os.environ['MONGODB_CONNECTION'])
+    client = MongoClient('mongodb://%s?authMechanism=MONGODB-CR'% os.environ['MONGODB_CONNECTION'])
     db = client['163music']
     playlist_id = db.playlist.find_one({'_id': 'playlist'})
     print('{:=^64}'.format('歌单进度%s' % playlist_id))
