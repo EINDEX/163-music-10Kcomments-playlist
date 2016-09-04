@@ -73,7 +73,6 @@ def create_music(q):
                 if song['commentThreadId'] is not None:
                     queue.put(song)
         db.playlist.update({'_id': 'playlist'}, {'id': playlist + 1})
-        print(111)
 
 
 def get_comment(q, ):
@@ -90,6 +89,7 @@ def get_comment(q, ):
         music_dict['_id'] = music_dict['id']
         songs = db.songs
         songs.save(music_dict)
+        print(music_dict)
 
 
 if __name__ == '__main__':
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     print('MONGODB: %s' % os.environ['MONGODB'])
 
     print('{:=^64}'.format('Connect to MongoDB'))
-    client = MongoClient(os.environ['MONGODB'])
+    client = MongoClient('mongodb://%s' % os.environ['MONGODB_CONNECTION'])
     db = client['163music']
     playlist_id = db.playlist.find_one({'_id': 'playlist'})
     print('{:=^64}'.format('歌单进度%s' % playlist_id))
