@@ -67,17 +67,17 @@ def login():
 def create_music(q):
     while True:
         playlist = db.playlist.find_one({'_id': 'playlist'})['id']
-        req_json = requests.get(playlist_url % str([ids for ids in range(playlist, playlist + 50)])).json()
+        req_json = requests.get(playlist_url % str(playlist)).json()
         if req_json['code'] == 200:
-            for song in req_json['songs']:
-                if song['commentThreadId'] is not None:
-                    queue.put(song)
+            for song in req_json['result']['tracks']:
+                    if song['commentThreadId'] is not None:
+                        queue.put(song)
         db.playlist.update({'_id': 'playlist'}, {'id': playlist + 1})
 
 
 def get_comment(q, ):
     while True:
-        time.sleep(1000)
+        time.sleep(1)
         music_dict = q.get()
         ids_comments = requests.post(comment_url % str(music_dict['commentThreadId']),
                                      headers=headers,
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     print('MONGODB: %s' % os.environ['MONGODB_CONNECTION'])
 
     print('{:=^64}'.format('Connect to MongoDB'))
-    client = MongoClient('mongodb://%s' % os.environ['MONGODB_CONNECTION'])
+    client = MongoClient('mongodb://%s'% os.environ['MONGODB_CONNECTION'])
     db = client['163music']
     playlist_id = db.playlist.find_one({'_id': 'playlist'})
     print('{:=^64}'.format('歌单进度%s' % playlist_id))
