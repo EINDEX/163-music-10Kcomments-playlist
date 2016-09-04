@@ -76,6 +76,7 @@ def create_music(q):
                 if song['commentThreadId'] is not None:
                     queue.put(song)
         db.playlist.update({'_id': 'playlist'}, {'id': playlist + 1})
+        print(111)
 
 
 def get_comment(q, ):
@@ -97,7 +98,7 @@ def get_comment(q, ):
 if __name__ == '__main__':
     print('模块', sys.argv[0])
     queue = Queue(maxsize=100)
-    if db.playlist.find_one({'_id': 'playlist'}) is None:
+    if db.playlist.find({'_id': 'playlist'}) is None:
         db.playlist.insert({'_id': 'playlist', 'playlist': 100001})
     login()
     c = Thread(name='歌曲信息', target=create_music, args=(queue,))
