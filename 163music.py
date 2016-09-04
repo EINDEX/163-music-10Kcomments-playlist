@@ -97,7 +97,7 @@ if __name__ == '__main__':
     print('{:=^64}'.format('初始化'))
     print('USERNAME: %s' % os.environ['USERNAME'])
     print('PASSWORD: %s' % os.environ['PASSWORD'])
-    print('MONGODB: %s' % os.environ['MONGODB'])
+    print('MONGODB: %s' % os.environ['MONGODB_CONNECTION'])
 
     print('{:=^64}'.format('Connect to MongoDB'))
     client = MongoClient('mongodb://%s' % os.environ['MONGODB_CONNECTION'])
