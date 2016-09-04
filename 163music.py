@@ -26,15 +26,13 @@ headers = {
     'Referer': 'http://music.163.com/'
 }
 
-
-
 text = {
     'username': os.environ['USERNAME'],
     'password': os.environ['PASSWORD'],
     'rememberLogin': 'true'
 }
 
-client = MongoClient("mongodb://u9SYvucFl075xtZr:pZrxzsykLUDeud6Qh@10.10.190.60:27017")
+client = MongoClient()
 db = client['163music']
 
 
@@ -98,7 +96,7 @@ def get_comment(q, ):
 
 if __name__ == '__main__':
     print('模块', sys.argv[0])
-    queue = Queue(maxsize=50)
+    queue = Queue(maxsize=100)
     if db.playlist.find_one({'_id': 'playlist'}) is None:
         db.playlist.insert({'_id': 'playlist', 'playlist': 100001})
     login()

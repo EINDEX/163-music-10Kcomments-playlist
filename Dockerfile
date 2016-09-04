@@ -1,0 +1,5 @@
+FROM python:3.5.2
+MAINTAINER EINDEX snowstarlbk@gmail.com
+
+ENV USERNAME
+ENV PASSWORD
