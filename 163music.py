@@ -66,13 +66,13 @@ def login():
 
 def create_music(q):
     while True:
-        playlist = db.playlist.find_one({'_id': 'playlist'})['id']
+        playlist = db['playlist'].find_one({'_id': 'playlist'})['id']
         req_json = requests.get(playlist_url % str(playlist)).json()
         if req_json['code'] == 200:
             for song in req_json['result']['tracks']:
-                    if song['commentThreadId'] is not None:
-                        queue.put(song)
-        db.playlist.update({'_id': 'playlist'}, {'id': playlist + 1})
+                if song['commentThreadId'] is not None:
+                    queue.put(song)
+        db['playlist'].update({'_id': 'playlist'}, {'id': playlist + 1})
 
 
 def get_comment(q, ):
@@ -87,7 +87,7 @@ def get_comment(q, ):
         music_dict['comments'] = ids_comments['hotComments']
         music_dict['comment_total'] = ids_comments['total']
         music_dict['_id'] = music_dict['id']
-        songs = db.songs
+        songs = db['songs']
         songs.save(music_dict)
         print(music_dict)
 
@@ -100,12 +100,13 @@ if __name__ == '__main__':
     print('MONGODB: %s' % os.environ['MONGODB_CONNECTION'])
 
     print('{:=^64}'.format('Connect to MongoDB'))
-    client = MongoClient('mongodb://%s?authMechanism=MONGODB-CR'% os.environ['MONGODB_CONNECTION'])
+    client = MongoClient('mongodb://%s?authMechanism=MONGODB-CR' % os.environ['MONGODB_CONNECTION'])
     db = client['163music']
-    playlist_id = db.playlist.find_one({'_id': 'playlist'})
+    playlist_id = db['playlist'].find_one({'_id': 'playlist'})
+
     print('{:=^64}'.format('歌单进度%s' % playlist_id))
     if playlist_id is None:
-        db.playlist.insert({'_id': 'playlist', 'playlist': 100001})
+        db['playlist'].insert({'_id': 'playlist', 'playlist': 100001})
     print('{:=^64}'.format('Connected MongoDB'))
 
     queue = Queue(maxsize=100)
