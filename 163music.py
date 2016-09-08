@@ -27,8 +27,8 @@ headers = {
 }
 
 text = {
-    'username': os.environ['USERNAME'],
-    'password': os.environ['PASSWORD'],
+    'username': '',
+    'password': '',
     'rememberLogin': 'true'
 }
 
@@ -69,6 +69,8 @@ def create_music(q):
         playlist = db['playlist'].find_one({'_id': 'playlist'})['id']
         req_json = requests.get(playlist_url % str(playlist)).json()
         if req_json['code'] == 200:
+            req_json['_id'] = req_json['id']
+            db['list'].save(req_json)
             for song in req_json['result']['tracks']:
                 if song['commentThreadId'] is not None:
                     queue.put(song)
@@ -89,25 +91,18 @@ def get_comment(q, ):
         music_dict['_id'] = music_dict['id']
         songs = db['songs']
         songs.save(music_dict)
-        print(music_dict)
+        # print(music_dict)
 
 
 if __name__ == '__main__':
     print('{:=^64}'.format('模块%s' % sys.argv[0]))
-    print('{:=^64}'.format('初始化'))
-    print('USERNAME: %s' % os.environ['USERNAME'])
-    print('PASSWORD: %s' % os.environ['PASSWORD'])
-    print('MONGODB: %s' % os.environ['MONGODB_CONNECTION'])
-
     print('{:=^64}'.format('Connect to MongoDB'))
-    client = MongoClient('mongodb://%s' % os.environ['MONGODB_CONNECTION'])
+    client = MongoClient()
     db = client['163music']
-    db.authenticate(os.environ['MONGODB_USERNAME'],password=os.environ['MONGODB_PASSWORD'])
     playlist_id = db['playlist'].find_one({'_id': 'playlist'})
-
     print('{:=^64}'.format('歌单进度%s' % playlist_id))
     if playlist_id is None:
-        db['playlist'].insert({'_id': 'playlist', 'playlist': 100001})
+        db['playlist'].insert({'_id': 'playlist', 'id': 100001})
     print('{:=^64}'.format('Connected MongoDB'))
 
     queue = Queue(maxsize=100)
@@ -118,5 +113,5 @@ if __name__ == '__main__':
     for i in range(1 + multiprocessing.cpu_count()):
         g = Thread(name='评论 %s' % i, target=get_comment, args=(queue,))
         g.start()
-        print('{:=^64}'.format('抓取 %s 启动' % i))
+    print('{:=^64}'.format('抓取 %s 启动' % i))
     c.join()
