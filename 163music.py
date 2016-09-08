@@ -69,49 +69,70 @@ def create_music(q):
         playlist = db['playlist'].find_one({'_id': 'playlist'})['id']
         req_json = requests.get(playlist_url % str(playlist)).json()
         if req_json['code'] == 200:
-            req_json['_id'] = req_json['id']
-            db['list'].save(req_json)
+            req_json['_id'] = req_json['result']['id']
             for song in req_json['result']['tracks']:
-                if song['commentThreadId'] is not None:
-                    queue.put(song)
+                if song['id'] not in music_set:
+                    music_set.add(song['id'])
+                    if song['commentThreadId'] is not None:
+                        queue.put(song)
+            req_json['result']['tracks']= None
+            db['list'].save(req_json)
         db['playlist'].update({'_id': 'playlist'}, {'id': playlist + 1})
 
 
 def get_comment(q, ):
+    global num
     while True:
-        time.sleep(1)
+        #time.sleep(0.1)
         music_dict = q.get()
-        ids_comments = requests.post(comment_url % str(music_dict['commentThreadId']),
-                                     headers=headers,
-                                     data=data).json()
-        if ids_comments['code'] != 200:
-            return
-        music_dict['comments'] = ids_comments['hotComments']
-        music_dict['comment_total'] = ids_comments['total']
-        music_dict['_id'] = music_dict['id']
-        songs = db['songs']
-        songs.save(music_dict)
-        # print(music_dict)
+        try:
+            ids_comments = requests.post(comment_url % str(music_dict['commentThreadId']),
+                                         headers=headers,
+                                         data=data).json()
+            if ids_comments['code'] != 200:
+                return
+            music_dict['comments'] = ids_comments['hotComments']
+            music_dict['comment_total'] = ids_comments['total']
+            music_dict['_id'] = music_dict['id']
+            songs = db['songs']
+            songs.save(music_dict)
+            num += 1
+            print(num,end='\r')
+            # print('%s -> %s' % (music_dict['comment_total'], music_dict['name']))
+        except TimeoutError as e:
+            print('休息1分钟,%s'%num)
+            q.put(music_dict)
+            time.sleep(60)
+        except requests.exceptions.ConnectionError as e:
+            q.put(music_dict)
+            for t in range(10,0):
+                print('被抓 坐牢%s秒钟%s'% (t,num),end='\r')
+                time.sleep(1)
+            print()
 
 
 if __name__ == '__main__':
     print('{:=^64}'.format('模块%s' % sys.argv[0]))
     print('{:=^64}'.format('Connect to MongoDB'))
     client = MongoClient()
+    music_set=set()
     db = client['163music']
     playlist_id = db['playlist'].find_one({'_id': 'playlist'})
     print('{:=^64}'.format('歌单进度%s' % playlist_id))
     if playlist_id is None:
         db['playlist'].insert({'_id': 'playlist', 'id': 100001})
     print('{:=^64}'.format('Connected MongoDB'))
-
-    queue = Queue(maxsize=100)
+    num = 0
+    for song in db['songs'].find():
+        music_set.add(song['id'])
+        num += 1
+    queue = Queue(maxsize=10)
     login()
     c = Thread(name='歌曲信息', target=create_music, args=(queue,))
     c.start()
+    # for i in range(1 + multiprocessing.cpu_count()):
+    g = Thread(name='评论' , target=get_comment, args=(queue,))
+    g.start()
+    # print('{:=^64}'.format('抓取 %s 启动' % i))
     print('{:=^64}'.format('爬取启动'))
-    for i in range(1 + multiprocessing.cpu_count()):
-        g = Thread(name='评论 %s' % i, target=get_comment, args=(queue,))
-        g.start()
-    print('{:=^64}'.format('抓取 %s 启动' % i))
     c.join()
