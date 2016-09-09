@@ -97,14 +97,14 @@ def get_comment(music_dict):
         songs = db['songs']
         songs.save(music_dict)
         num += 1
-        print(num, end='\r')
+        print(num)
         # print('%s -> %s' % (music_dict['comment_total'], music_dict['name']))
     except TimeoutError as e:
         print('休息1分钟,%s' % num)
         time.sleep(60)
     except requests.exceptions.ConnectionError as e:
         for t in range(10, 0):
-            print('被抓 坐牢%s秒钟%s' % (t, num), end='\r')
+            print('被抓 坐牢%s秒钟%s' % (t, num))
             time.sleep(1)
         print()
 
