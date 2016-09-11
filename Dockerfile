@@ -9,4 +9,4 @@ RUN pip install -r requirements.txt -i http://pypi.douban.com/simple --trusted-h
 
 CMD ls
 EXPOSE 5000
-ENTRYPOINT  python3 __init__.py runserver --host 0.0.0.0 --port 80
+ENTRYPOINT  python3 manager.py runserver --host 0.0.0.0 --port 80
