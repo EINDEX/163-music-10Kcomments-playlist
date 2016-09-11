@@ -8,4 +8,4 @@ ADD requirements.txt requirements.txt
 RUN pip install -r requirements.txt -i http://pypi.douban.com/simple --trusted-host pypi.douban.com
 
 CMD ls
-ENTRYPOINT  python3 163music.py
+ENTRYPOINT  python3 init.py runserver --host 0.0.0.0 --port 80
