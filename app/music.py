@@ -1,4 +1,6 @@
 import binascii
+import threading
+
 import requests
 import json
 import os
@@ -6,7 +8,6 @@ import base64
 import time
 
 from Crypto.Cipher import AES
-
 from app import db, music_set, username, password, songs, music_list, playlist
 
 song_url = 'http://music.163.com/api/song/detail/?ids=%s'
@@ -56,41 +57,41 @@ def login():
     }
 
 
-def create_music(data):
-    playlist_url = 'http://music.163.com/api/playlist/detail?id=%s'
-    comment_url = 'http://music.163.com/weapi/v1/resource/comments/%s'
-    headers = {
-        'Cookie': 'appver=1.5.0.75771;',
-        'Referer': 'http://music.163.com/'
-    }
-    while True:
-        playlist_id = db['playlist'].find_one({'_id': 'playlist'})['id']
-        req_json = requests.get(playlist_url % str(playlist_id)).json()
-        if req_json['code'] == 200:
-            req_json['_id'] = req_json['result']['id']
-            for song in req_json['result']['tracks']:
-                if song['id'] not in music_set:
-                    music_set.add(song['id'])
-                    try:
-                        ids_comments = requests.post(comment_url % song['commentThreadId'], headers=headers,
-                                                     data=data).json()
-                        if ids_comments['code'] == 200:
-                            song['comments'] = ids_comments['hotComments']
-                            song['comment_total'] = ids_comments['total']
-                            song['_id'] = song['id']
-                            songs.save(song)
-                            print(song)
-                    except TimeoutError and ConnectionError:
-                        time.sleep(30)
-            music_list.save(req_json)
-        playlist.update({'_id': 'playlist'}, {'$inc': {'id': 1}})
+class MusicGet(threading.Thread):
+    def __init__(self):
+        super().__init__()
+        self.data = login()
+        playlist_id = db['playlist'].find_one({'_id': 'playlist'})
+        if playlist_id is None:
+            db['playlist'].insert({'_id': 'playlist', 'id': 100001})
+        for song in db['songs'].find():
+            music_set.add(song['id'])
 
-
-def music_init():
-    data = login()
-    playlist_id = db['playlist'].find_one({'_id': 'playlist'})
-    if playlist_id is None:
-        db['playlist'].insert({'_id': 'playlist', 'id': 100001})
-    for song in db['songs'].find():
-        music_set.add(song['id'])
-    create_music(data)
+    def run(self):
+        playlist_url = 'http://music.163.com/api/playlist/detail?id=%s'
+        comment_url = 'http://music.163.com/weapi/v1/resource/comments/%s'
+        headers = {
+            'Cookie': 'appver=1.5.0.75771;',
+            'Referer': 'http://music.163.com/'
+        }
+        while True:
+            playlist_id = db['playlist'].find_one({'_id': 'playlist'})['id']
+            req_json = requests.get(playlist_url % str(playlist_id)).json()
+            if req_json['code'] == 200:
+                req_json['_id'] = req_json['result']['id']
+                for song in req_json['result']['tracks']:
+                    if song['id'] not in music_set:
+                        music_set.add(song['id'])
+                        try:
+                            ids_comments = requests.post(comment_url % song['commentThreadId'], headers=headers,
+                                                         data=self.data).json()
+                            if ids_comments['code'] == 200:
+                                song['comments'] = ids_comments['hotComments']
+                                song['comment_total'] = ids_comments['total']
+                                song['_id'] = song['id']
+                                songs.save(song)
+                                print(song)
+                        except TimeoutError and ConnectionError:
+                            time.sleep(30)
+                music_list.save(req_json)
+            playlist.update({'_id': 'playlist'}, {'$inc': {'id': 1}})
